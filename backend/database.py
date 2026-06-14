@@ -15,7 +15,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create Users table
+  
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +27,7 @@ def init_db():
     )
     ''')
     
-    # Create Patients table
+  
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS patients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,14 +43,12 @@ def init_db():
     )
     ''')
     
-    # Simple migration for existing DB
+   
     try:
         cursor.execute("ALTER TABLE patients ADD COLUMN height REAL")
         cursor.execute("ALTER TABLE patients ADD COLUMN weight REAL")
     except sqlite3.OperationalError:
-        pass # Columns already exist
-    
-    # Create Reports table
+        pass 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +67,7 @@ def init_db():
     )
     ''')
     
-    # Add demo users if they don't exist
+
     demo_users = [
         ("Demo Staff", "staff", "staff", "staff"),
         ("Demo Doctor", "doctor", "doctor", "doctor"),
@@ -83,7 +81,7 @@ def init_db():
                 (name, email, generate_password_hash(password), role)
             )
         except sqlite3.IntegrityError:
-            pass # Already exists
+            pass
             
     conn.commit()
     conn.close()
