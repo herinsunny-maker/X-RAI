@@ -11,7 +11,6 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash
 
-# Allow imports from the project root (for backend.model_handler etc.)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.model_handler import ModelHandler
@@ -19,14 +18,12 @@ from backend.database import get_db_connection
 
 from backend.path_utils import get_upload_path, get_temp_path
 
-# ---------------------------------------------------------------------------
-# App setup
-# ---------------------------------------------------------------------------
+
 app = Flask(__name__)
 app.secret_key = "d03b07044453a985e135548d1c68f6041accd5f187796d11e5927c735d465352"
 CORS(app)
 
-# Folders derived from centralized path utility
+
 UPLOAD_FOLDER = get_upload_path()
 TEMP_FOLDER   = get_temp_path()
 
@@ -34,7 +31,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER,   exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Initialise the AI model wrapper (loads EfficientNetV2S + binary validator)
+
 handler = ModelHandler()
 
 
@@ -67,9 +64,6 @@ def calculate_bmi(height, weight):
         return None, None, None
 
 
-# ===========================================================================
-# AUTH ROUTES
-# ===========================================================================
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -128,7 +122,7 @@ def patient_login():
         return redirect(url_for("login"))
 
     db = get_db_connection()
-    # Check if patient exists with this phone number
+    
     patient = db.execute("SELECT * FROM patients WHERE phone = ?", (phone,)).fetchone()
     db.close()
 
@@ -142,9 +136,6 @@ def patient_login():
         flash("No patient found with this mobile number.", "error")
         return redirect(url_for("login"))
 
-# ===========================================================================
-# DASHBOARD
-# ===========================================================================
 
 @app.route("/")
 @app.route("/dashboard")
@@ -162,11 +153,11 @@ def dashboard():
     if "user_id" not in session and "patient_phone" not in session:
         return redirect(url_for("login"))
     
-    # If the user is a patient, redirect them to the patient dashboard
+   
     if session.get("role") == "patient":
         return redirect(url_for("patient_dashboard"))
 
-    # Only staff role has a dashboard in this simplified version
+   
     if session["role"] != "staff":
         flash("Access restricted to staff accounts.", "error")
         return redirect(url_for("login"))
@@ -198,9 +189,6 @@ def dashboard():
     return render_template("staff_dashboard.html", reports=reports_list, stats=stats)
 
 
-# ===========================================================================
-# NEW PATIENT — Staff registers a patient and uploads their X-ray
-# ===========================================================================
 
 @app.route("/staff/new_patient", methods=["GET", "POST"])
 def new_patient():
@@ -232,24 +220,24 @@ def new_patient():
             flash("Please upload an X-ray image.", "error")
             return redirect(request.url)
 
-        # Build a timestamped unique filename to avoid collisions
+        
         filename  = f"{int(time.time())}_{secure_filename(file.filename)}"
         temp_path = os.path.join(TEMP_FOLDER, filename)
         file.save(temp_path)
 
         try:
-            # If the checkbox 'cnn_enabled' is NOT 'on', we skip validation
+            
             cnn_enabled = request.form.get("cnn_enabled") == "on"
             results = handler.predict(temp_path, skip_validation=not cnn_enabled)
 
             if not results.get("is_xray"):
-                # Remove temp file and tell user
+              
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 flash(results.get("error", "Invalid image — not a knee X-ray."), "error")
                 return redirect(request.url)
 
-            # Persist patient to DB
+            
             db     = get_db_connection()
             cursor = db.cursor()
             cursor.execute(
@@ -258,14 +246,14 @@ def new_patient():
             )
             patient_id = cursor.lastrowid
 
-            # Move file from temp to permanent storage
+           
             final_path = os.path.join(UPLOAD_FOLDER, filename)
             os.rename(temp_path, final_path)
 
-            # Extract numeric grade from prediction string e.g. "Severe (Grade 4)" -> 4
+           
             grade_num = results.get("grade", 0)
 
-            # Save AI report (status = 'draft' until staff sends to doctor)
+          
             cursor.execute("""
                 INSERT INTO reports
                     (patient_id, xray_path, heatmap_path, overlay_path,
@@ -296,9 +284,6 @@ def new_patient():
     return render_template("new_patient.html")
 
 
-# ===========================================================================
-# CASE PREVIEW — Staff reviews AI result before sending to doctor
-# ===========================================================================
 
 @app.route("/staff/case_preview/<int:report_id>")
 def case_preview(report_id):
@@ -333,9 +318,6 @@ def case_preview(report_id):
     )
 
 
-# ===========================================================================
-# SEND TO DOCTOR — Promotes report status from 'draft' to 'pending'
-# ===========================================================================
 
 @app.route("/staff/send_to_doctor/<int:report_id>", methods=["POST"])
 def send_to_doctor(report_id):
@@ -356,7 +338,7 @@ def send_to_doctor(report_id):
 
     db = get_db_connection()
     
-    # Get the patient ID linked to this report to update their record
+   
     report = db.execute("SELECT patient_id FROM reports WHERE id=?", (report_id,)).fetchone()
     if report and report["patient_id"]:
         db.execute("""
@@ -376,9 +358,6 @@ def send_to_doctor(report_id):
     return redirect(url_for("dashboard"))
 
 
-# ===========================================================================
-# VIEW A4 REPORT — View detailed formatted report
-# ===========================================================================
 @app.route("/report/<int:report_id>")
 def view_report(report_id):
     """
@@ -398,27 +377,26 @@ def view_report(report_id):
 
     patient = db.execute("SELECT * FROM patients WHERE id = ?", (report["patient_id"],)).fetchone()
     
-    # Security check: patients can only see their own reports via phone match
+
     if session.get("role") == "patient" and patient["phone"] != session.get("patient_phone"):
         db.close()
         flash("Not authorized to view this report.", "error")
         return redirect(url_for('patient_dashboard'))
 
-    # Fetch doctor detail who finalised it (Optional depending on how strict we are)
     doctor = None
-    # We can try to guess who finalized it or just grab any doctor for demo purposes
+
     doctor = db.execute("SELECT * FROM users WHERE role = 'doctor' LIMIT 1").fetchone()
 
     db.close()
     
-    # Calculate health insights for the report
+  
     bmi, bmi_cat, healthy_weight = calculate_bmi(patient["height"], patient["weight"])
     tips = []
     
     grade = report["final_grade"] if report["final_grade"] is not None else report["ai_grade"]
     
     if bmi:
-        # BMI Specific Insights
+       
         if bmi_cat == "Underweight":
             tips.append(f"**Nutrition & BMI:** Your BMI ({bmi}) indicates you are underweight. A lack of muscle mass can decrease joint support. Consider a clinical nutrition plan to reach your target range ({healthy_weight}).")
             tips.append("**Joint Support:** Focus on resistance training to build the muscles around your knees, which absorb shock and stabilize the joint.")
@@ -429,13 +407,13 @@ def view_report(report_id):
         elif bmi_cat == "Normal":
             tips.append(f"**Weight Management:** Excellent job maintaining a healthy BMI ({bmi}). Remaining in your target weight range ({healthy_weight}) minimizes unnecessary mechanical stress on your knee cartilage.")
 
-        # Grade + BMI Interaction Insights
+       
         if grade >= 2 and (bmi_cat == "Overweight" or bmi_cat == "Obese"):
             tips.append("**Activity Modification:** With active cartilage wear, avoid high-impact activities (like running on hard surfaces). Substitute with low-impact alternatives like swimming, cycling, or using an elliptical machine while focusing on weight reduction.")
         elif grade >= 2 and bmi_cat == "Normal":
             tips.append("**Activity Modification:** Since your weight is optimal, focus purely on joint preservation. Avoid repetitive deep knee bending or prolonged squatting. Prioritize activities like brisk walking or water aerobics.")
             
-    # Pure Grade Specific Insights
+   
     if grade == 0:
         tips.append("**Prevention:** No signs of Osteoarthritis detected. Maintain your joint health through regular, varied exercise and stretching to ensure flexibility.")
     elif grade == 1:
@@ -457,9 +435,6 @@ def view_report(report_id):
     return render_template("report_detail.html", report=report, patient=patient, doctor=doctor, insights=insights)
 
 
-# ===========================================================================
-# DELETE PATIENT — Removes patient, all reports, and image files from disk
-# ===========================================================================
 
 @app.route("/staff/delete_patient/<int:patient_id>", methods=["POST"])
 def delete_patient(patient_id):
@@ -481,7 +456,7 @@ def delete_patient(patient_id):
             (patient_id,)
         ).fetchall()
 
-        # Delete image files from disk
+
         for report in reports:
             for col in ("xray_path", "heatmap_path", "overlay_path"):
                 rel_path = report[col]
@@ -493,7 +468,7 @@ def delete_patient(patient_id):
                         except Exception as fe:
                             print(f"File delete warning: {fe}")
 
-        # Remove from DB
+ 
         db.execute("DELETE FROM reports  WHERE patient_id=?", (patient_id,))
         db.execute("DELETE FROM patients WHERE id=?",         (patient_id,))
         db.commit()
@@ -508,9 +483,6 @@ def delete_patient(patient_id):
     return redirect(url_for("dashboard"))
 
 
-# ===========================================================================
-# QUICK CHECK — Test an X-ray without creating a full patient record
-# ===========================================================================
 
 @app.route("/staff/quick_check")
 def quick_check():
@@ -556,7 +528,7 @@ def quick_predict():
             final_path = os.path.join(UPLOAD_FOLDER, filename)
             os.rename(temp_path, final_path)
         else:
-            # Not a valid X-ray — discard the temp file
+        
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
@@ -619,9 +591,6 @@ def quick_save():
         db.close()
 
 
-# ===========================================================================
-# STATIC FILE SERVING — uploads served from static/uploads/
-# ===========================================================================
 
 @app.route("/static/uploads/<path:filename>")
 def serve_uploads(filename):
@@ -637,9 +606,7 @@ def serve_uploads(filename):
     )
 
 
-# ===========================================================================
-# PATIENT ROUTES — view reports
-# ===========================================================================
+
 
 @app.route("/patient/dashboard")
 def patient_dashboard():
@@ -653,7 +620,7 @@ def patient_dashboard():
 
     db = get_db_connection()
     
-    # We match all reports belonging to any patient record under this mobile number.
+
     reports = db.execute("""
         SELECT r.*, p.name AS patient_name, p.age, p.gender, p.height, p.weight
         FROM   reports r
@@ -662,11 +629,7 @@ def patient_dashboard():
         ORDER  BY r.created_at DESC
     """, (session["patient_phone"],)).fetchall()
     
-    # Process BMI for each report (even though it's currently derived from patient table)
-    # We need to add this back into the row dict though sqlite.Row doesn't support assignment
-    # So we'll pass bmi logic directly or convert reports to dicts
-    
-    # Convert rows to dicts to add 'bmi', 'bmi_cat', and 'healthy_weight'
+  
     reports_list = []
     for r in reports:
         r_dict = dict(r)
@@ -681,9 +644,7 @@ def patient_dashboard():
     return render_template("patient_dashboard.html", reports=reports_list)
 
 
-# ===========================================================================
-# DOCTOR ROUTES — case review workflow
-# ===========================================================================
+
 
 @app.route("/doctor/pending")
 def pending_cases():
@@ -767,9 +728,7 @@ def review_case(report_id):
     return render_template("case_review.html", report=report, patient=patient, bmi=bmi, bmi_cat=bmi_cat, healthy_weight=healthy_weight)
 
 
-# ===========================================================================
-# ENTRY POINT
-# ===========================================================================
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
