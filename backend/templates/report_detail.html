@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% set hide_sidebar = True %}
+
+{% block title %}Report Detail - KneeGuard AI{% endblock %}
+{% block page_title %}Medical Report Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* A4 Print Styles */
+    @media print {
+        body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        /* Ensure all colored elements keep their background */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        .sidebar,
+        .top-header,
+        .sidebar-footer {
+            display: none !important;
+        }
+
+        .main-container {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        .card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        /* Hide the print button when printing */
+        .print-btn-container {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-wrapper" style="max-width: 210mm; margin: 0 auto; background: white;">
+    <div class="card" style="padding: 40px;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; border-bottom: 2px solid var(--dashboard-bg); padding-bottom: 24px;">
+            <div>
+                <h1 style="font-size: 1.75rem; color: var(--primary-color); margin-bottom: 8px;">Diagnostic Report</h1>
+                <p style="color: #64748b; font-size: 0.9rem;">Case ID: #{{ report.id }} | Date: {{ report.created_at }}
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <div
+                    style="background: #dcfce7; color: #166534; padding: 6px 16px; border-radius: 20px; font-weight: 700; display: inline-block; margin-bottom: 8px;">
+                    FINALIZED
+                </div>
+                <p style="font-size: 0.85rem; color: #64748b;">Reviewed by Dr. {{ doctor.name }}</p>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
+            <div>
+                <h3 style="font-size: 1rem; color: #64748b; text-transform: uppercase; margin-bottom: 16px;">Patient
+                    Overview</h3>
+                <div style="display: grid; grid-template-columns: 100px 1fr; gap: 12px; font-size: 1rem;">
+                    <div style="color: #94a3b8;">Patient:</div>
+                    <div style="font-weight: 600;">{{ patient.name }}</div>
+                    <div style="color: #94a3b8;">Age:</div>
+                    <div style="font-weight: 600;">{{ patient.age }}</div>
+                    <div style="color: #94a3b8;">Gender:</div>
+                    <div style="font-weight: 600;">{{ patient.gender }}</div>
+                </div>
+            </div>
+            <div
+                style="background: var(--primary-light); padding: 24px; border-radius: 12px; border: 1px solid #cff1ef;">
+                <h3
+                    style="font-size: 1rem; color: var(--primary-color); text-transform: uppercase; margin-bottom: 12px;">
+                    Final Diagnosis</h3>
+                <div style="font-size: 2rem; font-weight: 800; color: var(--text-color);">
+                    Grade {{ report.final_grade }}
+                </div>
+                <div style="font-size: 1.1rem; color: #475569; font-weight: 600;">
+                    {% if report.final_grade == 0 %}Normal (No OA){% elif report.final_grade == 1 %}Doubtful OA{% elif
+                    report.final_grade == 2 %}Mild OA{% elif report.final_grade == 3 %}Moderate OA{% else %}Severe OA{%
+                    endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if insights and insights.bmi %}
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1rem; color: #64748b; text-transform: uppercase; margin-bottom: 16px;">Biometric
+                Analysis & Health Tips</h3>
+            <div
+                style="background: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); page-break-inside: avoid;">
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
+                    <div>
+                        <div
+                            style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Body Mass Index (BMI)</div>
+                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                            <span style="font-size: 2rem; font-weight: 800; color: #1e293b;">{{ insights.bmi }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span
+                            class="badge badge-{% if insights.bmi_cat == 'Normal' %}success{% elif insights.bmi_cat == 'Underweight' %}pending{% else %}danger{% endif %}"
+                            style="font-size: 0.9rem; padding: 6px 16px;">
+                            {{ insights.bmi_cat }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="bmi-scale-container" style="margin-bottom: 24px;">
+                    <div class="bmi-bar">
+                        {% set bmi_percent = ((insights.bmi / 45) * 100) %}
+                        {% if bmi_percent > 100 %}{% set bmi_percent = 100 %}{% endif %}
+                        {% if bmi_percent < 0 %}{% set bmi_percent=0 %}{% endif %} <div class="bmi-marker"
+                            style="left: {{ bmi_percent }}%;">
+                    </div>
+                </div>
+                <div class="bmi-scale-labels">
+                    <span>15</span>
+                    <span>18.5</span>
+                    <span>25</span>
+                    <span>30</span>
+                    <span>40+</span>
+                </div>
+            </div>
+
+            <div style="padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px; color: #334155;">
+                    <i class="fas fa-robot" style="margin-right: 6px; color: var(--primary);"></i>
+                    AI-Generated Health Insights
+                </h4>
+                <ul style="padding-left: 20px; color: #475569; font-size: 0.9rem; line-height: 1.6; margin-bottom: 0;">
+                    {% for tip in insights.tips %}
+                    <li style="margin-bottom: 8px;">
+                        {{ tip|replace('**', '<strong>', 1)|replace('**', '</strong>', 1)|safe }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom: 40px;">
+        <h3 style="font-size: 1rem; color: #64748b; text-transform: uppercase; margin-bottom: 16px;">Medical
+            Conclusion</h3>
+        <div
+            style="background: #f8fafc; padding: 24px; border-radius: 12px; line-height: 1.6; color: #334155; border: 1px solid var(--border-color);">
+            {{ report.doctor_notes or 'No specific notes provided.' }}
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 24px; margin-bottom: 40px;">
+        {% if report.xray_path %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.9rem; color: #64748b; text-transform: uppercase; margin-bottom: 12px;">X-ray Image
+            </h3>
+            <img src="{{ url_for('serve_uploads', filename=report.xray_path.split('/')[-1] if '/' in report.xray_path else report.xray_path) }}"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border-color);" alt="Diagnostic X-ray">
+        </div>
+        {% endif %}
+
+        {% if report.overlay_path %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.9rem; color: #64748b; text-transform: uppercase; margin-bottom: 12px;">AI Heatmap
+                Analysis</h3>
+            <img src="{{ url_for('serve_uploads', filename=report.overlay_path.split('/')[-1] if '/' in report.overlay_path else report.overlay_path) }}"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border-color);"
+                alt="AI Heatmap Overlay">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Educational Section -->
+    <div
+        style="margin-bottom: 40px; padding: 24px; background: #f1f5f9; border-radius: 12px; font-size: 0.85rem; border: 1px solid #e2e8f0;">
+        <h3
+            style="font-size: 0.9rem; color: #475569; text-transform: uppercase; margin-bottom: 16px; font-weight: 700;">
+            Understanding Your Diagnosis: The KL Grading System
+        </h3>
+        <p style="margin-bottom: 16px; color: #475569;">
+            Physicians use the Kellgren-Lawrence (KL) classification to measure the severity of Knee Osteoarthritis
+            (OA).
+            OA is a degenerative joint disease where the cartilage that cushions your joints wears down over time.
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #34d399;">
+                <strong style="color: #059669; display: block; margin-bottom: 4px;">Grade 0: Normal</strong>
+                No radiographic features of OA are present. Healthy joint space.
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #60a5fa;">
+                <strong style="color: #2563eb; display: block; margin-bottom: 4px;">Grade 1: Doubtful</strong>
+                Doubtful joint space narrowing and possible osteophysic (bone spur) lipping.
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #facc15;">
+                <strong style="color: #ca8a04; display: block; margin-bottom: 4px;">Grade 2: Mild</strong>
+                Definite osteophytes and possible joint space narrowing.
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #f97316;">
+                <strong style="color: #ea580c; display: block; margin-bottom: 4px;">Grade 3: Moderate</strong>
+                Multiple moderate osteophytes, definite joint space narrowing, and some sclerosis (bone hardening).
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #ef4444;">
+                <strong style="color: #dc2626; display: block; margin-bottom: 4px;">Grade 4: Severe</strong>
+                Large osteophytes, marked joint space narrowing, severe sclerosis, and definite deformity of bone ends.
+            </div>
+        </div>
+        <div style="margin-top: 20px; font-style: italic; color: #64748b; font-size: 0.8rem;">
+            *Disclaimer: This report is generated by AI and must be validated by a licensed physician before any
+            clinical treatment or surgery.
+        </div>
+    </div>
+
+
+    <div class="print-btn-container"
+        style="display: flex; justify-content: center; border-top: 1px solid var(--border-color); padding-top: 32px;">
+        <button class="btn btn-primary" onclick="window.print()" style="padding: 14px 40px;">
+            <i class="fas fa-print"></i> Print A4 Report
+        </button>
+    </div>
+</div>
+</div>
+{% endblock %}

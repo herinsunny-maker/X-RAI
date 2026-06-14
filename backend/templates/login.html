@@ -1,0 +1,310 @@
+{% extends "base.html" %} {% block title %}Login - KneeGuard AI{% endblock %} {%
+block content %}
+<div
+  style="
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+  "
+>
+  <div class="card" style="width: 100%; max-width: 400px; padding: 40px">
+    <div style="text-align: center; margin-bottom: 32px">
+      <h1 style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em">
+        <span style="color: #64748b">X-r</span
+        ><span style="color: #1bb8b0">ai</span>
+      </h1>
+      <p
+        id="login-subtitle"
+        style="color: #64748b; font-size: 0.95rem; margin-top: 12px"
+      >
+        Please login to your account
+      </p>
+    </div>
+
+    <!-- Staff / Doctor Login Form -->
+    <form id="staff-login-form" action="{{ url_for('login') }}" method="POST">
+      <div style="margin-bottom: 10px">
+        <label
+          for="email"
+          style="
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+          "
+          >Username</label
+        >
+        <input
+          type="text"
+          id="email"
+          name="email"
+          required
+          autocomplete="username"
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+          "
+          placeholder="Enter your username"
+          onfocus="
+            this.style.borderColor = 'var(--primary)';
+            this.style.background = '#fff';
+          "
+          onblur="
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#f8fafc';
+          "
+        />
+      </div>
+      <div style="margin-bottom: 100px">
+        <label
+          for="password"
+          style="
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+          "
+          >Password</label
+        >
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+          "
+          placeholder="Enter your password"
+          onfocus="
+            this.style.borderColor = 'var(--primary)';
+            this.style.background = '#fff';
+          "
+          onblur="
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#f8fafc';
+          "
+        />
+      </div>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        style="width: 100%; justify-content: center; padding: 14px"
+      >
+        Log In
+      </button>
+      <div style="text-align: center; margin-top: 20px">
+        <a
+          href="#"
+          onclick="
+            togglePatientLogin(true);
+            return false;
+          "
+          style="
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-decoration: none;
+            font-weight: 600;
+          "
+          >Are you a patient? Login here</a
+        >
+      </div>
+    </form>
+
+    <!-- Patient Login Form -->
+    <form
+      id="patient-login-form"
+      action="{{ url_for('patient_login') }}"
+      method="POST"
+      style="display: none"
+    >
+      <div id="patient-phone-section" style="margin-bottom: 24px">
+        <label
+          for="phone"
+          style="
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+          "
+          >Mobile Number</label
+        >
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          required
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+          "
+          placeholder="Enter your mobile number"
+          onfocus="
+            this.style.borderColor = 'var(--primary)';
+            this.style.background = '#fff';
+          "
+          onblur="
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#f8fafc';
+          "
+        />
+      </div>
+
+      <div id="patient-otp-section" style="display: none; margin-bottom: 24px">
+        <label
+          for="otp"
+          style="
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+          "
+          >Verification Code (OTP)</label
+        >
+        <input
+          type="text"
+          id="otp"
+          name="otp"
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+            text-align: center;
+            letter-spacing: 4px;
+          "
+          placeholder="123456"
+          onfocus="
+            this.style.borderColor = 'var(--primary)';
+            this.style.background = '#fff';
+          "
+          onblur="
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#f8fafc';
+          "
+        />
+        <p
+          style="
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 8px;
+            text-align: center;
+          "
+        >
+          Demo mode: Enter any 6-digit number
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="send-otp-btn"
+        onclick="showOtpField()"
+        class="btn btn-primary"
+        style="width: 100%; justify-content: center; padding: 14px"
+      >
+        Send OTP
+      </button>
+      <button
+        type="submit"
+        id="verify-otp-btn"
+        class="btn btn-primary"
+        style="
+          width: 100%;
+          justify-content: center;
+          padding: 14px;
+          display: none;
+        "
+      >
+        Verify & Login
+      </button>
+      <div style="text-align: center; margin-top: 20px">
+        <a
+          href="#"
+          onclick="
+            togglePatientLogin(false);
+            return false;
+          "
+          style="
+            color: #64748b;
+            font-size: 0.9rem;
+            text-decoration: none;
+            font-weight: 600;
+          "
+          >Staff Login</a
+        >
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function togglePatientLogin(showPatient) {
+    const staffForm = document.getElementById("staff-login-form");
+    const patientForm = document.getElementById("patient-login-form");
+    const subtitle = document.getElementById("login-subtitle");
+
+    if (showPatient) {
+      staffForm.style.display = "none";
+      patientForm.style.display = "block";
+      subtitle.textContent = "Patient Portal Login";
+    } else {
+      staffForm.style.display = "block";
+      patientForm.style.display = "none";
+      subtitle.textContent = "Please login to your account";
+      // Reset patient form
+      document.getElementById("patient-phone-section").style.display = "block";
+      document.getElementById("patient-otp-section").style.display = "none";
+      document.getElementById("send-otp-btn").style.display = "flex";
+      document.getElementById("verify-otp-btn").style.display = "none";
+      document.getElementById("otp").removeAttribute("required");
+      document.getElementById("otp").value = "";
+    }
+  }
+
+  function showOtpField() {
+    const phoneInput = document.getElementById("phone");
+    if (!phoneInput.value || phoneInput.value.trim() === "") {
+      alert("Please enter your mobile number first.");
+      return;
+    }
+
+    // Hide phone input, show OTP
+    document.getElementById("patient-phone-section").style.display = "none";
+    document.getElementById("patient-otp-section").style.display = "block";
+    document.getElementById("send-otp-btn").style.display = "none";
+    document.getElementById("verify-otp-btn").style.display = "flex";
+
+    // Make OTP required
+    document.getElementById("otp").setAttribute("required", "required");
+    document.getElementById("otp").focus();
+  }
+</script>
+{% endblock %}

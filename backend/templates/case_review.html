@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Case Review - KneeGuard AI{% endblock %}
+{% block page_title %}Case Review: {{ patient.name }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 32px;">
+    <!-- Large Side-by-Side View -->
+    <div style="display: flex; gap: 24px;">
+        <!-- Original X-Ray -->
+        {% if report['xray_path'] %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #475569;">Patient X-Ray</h3>
+            <img src="{{ url_for('serve_uploads', filename=report['xray_path'].split('/')[-1] if '/' in report['xray_path'] else report['xray_path']) }}"
+                alt="Patient X-Ray"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border); cursor: pointer;"
+                onclick="window.open(this.src, '_blank')">
+        </div>
+        {% endif %}
+        <!-- Heatmap Overlay -->
+        {% if report['overlay_path'] %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #475569;">AI Diagnosis Heatmap
+            </h3>
+            <img src="{{ url_for('serve_uploads', filename=report['overlay_path'].split('/')[-1] if '/' in report['overlay_path'] else report['overlay_path']) }}"
+                alt="AI Heatmap"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border); cursor: pointer;"
+                onclick="window.open(this.src, '_blank')">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bottom Info Section -->
+    <form action="{{ url_for('review_case', report_id=report.id) }}" method="POST">
+        <div style="display: grid; grid-template-columns: 1fr 400px; gap: 32px;">
+            <!-- Left Column: Staff Clinical Notes & Doctor Notes -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <h3
+                        style="font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Staff Clinical Notes</h3>
+                    <div
+                        style="background: #f8fafc; padding: 16px; border-radius: 8px; font-style: italic; color: #475569; border: 1px solid var(--border); margin-bottom: 24px;">
+                        "{{ report.staff_notes or 'No notes provided by staff.' }}"
+                    </div>
+
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--primary);">
+                        Doctor's Consultation Notes</h3>
+                    <textarea id="doctor_notes" name="doctor_notes"
+                        style="flex-grow: 1; width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; min-height: 200px; font-size: 1rem; font-family: inherit;"
+                        placeholder="Type your clinical findings and consultation recommendations here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Prediction & Final Decision -->
+            <div style="display: flex; flex-direction: column; gap: 0px;">
+                <!-- AI Prediction Card -->
+                <div class="card" style="border-left: 6px solid var(--primary);">
+                    <h3
+                        style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        AI Prediction</h3>
+                    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 1.5rem; font-weight: 700;">Grade {{ report.ai_grade }}</span>
+                        <span style="font-size: 0.9rem; color: #10b981; font-weight: 600;">({{ report.ai_confidence |
+                            float
+                            | round(1) }}% match)</span>
+                    </div>
+                    System suggests a {% if report.ai_grade == 0 %}Normal{% elif report.ai_grade == 1 %}Doubtful{%
+                    elif
+                    report.ai_grade == 2 %}Mild{% elif report.ai_grade == 3 %}Moderate{% else %}Severe{% endif %}
+                    classification.
+                </div>
+                {% if bmi %}
+                <div
+                    style="font-size: 0.85rem; color: #475569; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 600; color: #1e293b; font-size: 0.9rem;">Patient BMI Analysis</span>
+                        <span
+                            class="badge badge-{% if bmi_cat == 'Normal' %}success{% elif bmi_cat == 'Underweight' %}pending{% else %}danger{% endif %}"
+                            style="font-size: 0.7rem; padding: 4px 10px;">
+                            {{ bmi_cat }} ({{ bmi }})
+                        </span>
+                    </div>
+
+                    <div class="bmi-scale-container" style="margin: 10px 0;">
+                        <div class="bmi-bar">
+                            {% set bmi_percent = ((bmi / 45) * 100) %}
+                            {% if bmi_percent > 100 %}{% set bmi_percent = 100 %}{% endif %}
+                            {% if bmi_percent < 0 %}{% set bmi_percent=0 %}{% endif %} <div class="bmi-marker"
+                                style="left: {{ bmi_percent }}%;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 8px; font-style: italic; font-size: 0.8rem; line-height: 1.4;">
+                    {% if bmi_cat == 'Overweight' or bmi_cat == 'Obese' %}
+                    <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                    Alert: High BMI ({{ bmi }}) contributes to accelerated cartilage wear.
+                    <strong>Target weight range: {{ healthy_weight }}</strong>
+                    {% else %}
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    BMI is within manageable range for mechanical joint loading.
+                    <strong>Target weight range: {{ healthy_weight }}</strong>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div
+                style="font-size: 0.85rem; color: #94a3b8; border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 12px; font-style: italic;">
+                <i class="fas fa-info-circle"></i> BMI analysis unavailable. Height and weight data missing.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Doctor Decision Card -->
+        <div class="card">
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; color: var(--text);">Final
+                Decision</h3>
+            <div style="margin-bottom: 24px;">
+                <label for="final_grade"
+                    style="display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 600; color: #475569;">Confirm
+                    or
+                    Override Grade</label>
+                <select id="final_grade" name="final_grade" required
+                    style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; background: #fff;">
+                    <option value="0" {% if report.ai_grade==0 %}selected{% endif %}>Grade 0: Normal</option>
+                    <option value="1" {% if report.ai_grade==1 %}selected{% endif %}>Grade 1: Doubtful</option>
+                    <option value="2" {% if report.ai_grade==2 %}selected{% endif %}>Grade 2: Mild</option>
+                    <option value="3" {% if report.ai_grade==3 %}selected{% endif %}>Grade 3: Moderate</option>
+                    <option value="4" {% if report.ai_grade==4 %}selected{% endif %}>Grade 4: Severe</option>
+                </select>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button type="submit" name="action" value="approve" class="btn btn-primary"
+                    style="justify-content: center; padding: 14px; font-size: 1rem;">
+                    <i class="fas fa-check-circle"></i> Finalize Report
+                </button>
+                <button type="submit" name="action" value="reupload" class="btn btn-outline"
+                    style="justify-content: center; padding: 14px; font-size: 1rem; color: #ef4444; border-color: #fca5a5;">
+                    <i class="fas fa-redo"></i> Request Reupload
+                </button>
+            </div>
+        </div>
+</div>
+</div>
+</form>
+</div>
+{% endblock %}

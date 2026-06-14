@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}My Reports - KneeGuard AI{% endblock %}
+{% block page_title %}My Diagnostic Reports{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">Your Recent Scans</h3>
+        <div style="position: relative;">
+            <i class="fas fa-search"
+                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+            <input type="text" id="scanSearch" placeholder="Search by ID or Finding..."
+                style="padding: 10px 12px 10px 36px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 250px; outline: none; transition: border-color 0.2s;"
+                onkeyup="filterScans()">
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+        <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; align-self: start;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border); color: #64748b; font-size: 0.85rem;">
+                        <th style="padding: 12px 16px;">Date</th>
+                        <th style="padding: 12px 16px;">Report ID</th>
+                        <th style="padding: 12px 16px;">BMI</th>
+                        <th style="padding: 12px 16px;">Finding</th>
+                        <th style="padding: 12px 16px;">Status</th>
+                        <th style="padding: 12px 16px;">Doctor Notes</th>
+                        <th style="padding: 12px 16px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr
+                        style="border-bottom: 1px solid var(--border); font-size: 0.9rem; background-color: {{ loop.cycle('transparent', '#f8fafc') }};">
+                        <td style="padding: 16px;">{{ report.created_at.split(' ')[0] if report.created_at else '' }}
+                        </td>
+                        <td style="padding: 16px; font-weight: 600;">#{{ report.id }}</td>
+                        <td style="padding: 16px; font-weight: 600;">
+                            {% if report.bmi %}
+                            {{ report.bmi }}
+                            <br><span
+                                class="badge badge-{% if report.bmi_cat == 'Normal' %}success{% elif report.bmi_cat == 'Underweight' %}pending{% else %}danger{% endif %}"
+                                style="font-size: 0.65rem; padding: 2px 6px;">{{ report.bmi_cat }}</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px;">
+                            {% if report.status == 'reviewed' and report.final_grade is not none %}
+                            <span style="font-weight: 600; color: #10b981;">
+                                Grade {{ report.final_grade }}
+                            </span>
+                            {% else %}
+                            <span style="color: #94a3b8;">Pending Review</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px;">
+                            <span
+                                class="badge badge-{% if report.status == 'pending' or report.status == 'draft' %}pending{% else %}success{% endif %}">
+                                {% if report.status == 'draft' %}Processing{% else %}{{ report.status }}{% endif %}
+                            </span>
+                        </td>
+                        <td style="padding: 16px; color: #475569; font-style: italic; max-width: 300px;">
+                            {% if report.status == 'reviewed' and report.doctor_notes %}
+                            "{{ report.doctor_notes }}"
+                            {% else %}
+                            <span style="color: #cbd5e1;">Not available yet</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px; text-align: center;">
+                            {% if report.status == 'reviewed' %}
+                            <a href="{{ url_for('view_report', report_id=report.id) }}" class="btn btn-outline"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                <i class="fas fa-file-medical-alt"></i> View Report
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not reports %}
+                    <tr>
+                        <td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <i class="fas fa-file-medical-alt"
+                                style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                            No diagnostic reports found for this mobile number.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+<script>
+    function filterScans() {
+        const input = document.getElementById("scanSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector("table");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            const idTd = tr[i].getElementsByTagName("td")[1]; // Report ID
+            const findingTd = tr[i].getElementsByTagName("td")[3]; // Finding
+
+            if (idTd || findingTd) {
+                const idText = idTd ? (idTd.textContent || idTd.innerText) : "";
+                const findingText = findingTd ? (findingTd.textContent || findingTd.innerText) : "";
+
+                if (idText.toLowerCase().indexOf(filter) > -1 || findingText.toLowerCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Case Preview - KneeGuard AI{% endblock %}
+{% block page_title %}AI Result Preview: {{ patient.name }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 32px;">
+    <!-- Large Side-by-Side View -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Left side: X-Ray Image -->
+        {% if results['xray_path'] %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #475569;">Original X-Ray</h3>
+            <img src="{{ url_for('serve_uploads', filename=results['xray_path'].split('/')[-1] if '/' in results['xray_path'] else results['xray_path']) }}"
+                alt="Patient X-Ray"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        </div>
+        {% endif %}
+        <!-- Right side: AI Heatmap -->
+        {% if results['overlay_path'] %}
+        <div style="flex: 1;">
+            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #475569;">Heatmap Overlay</h3>
+            <img src="{{ url_for('serve_uploads', filename=results['overlay_path'].split('/')[-1] if '/' in results['overlay_path'] else results['overlay_path']) }}"
+                alt="AI Heatmap"
+                style="width: 100%; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bottom Info Section -->
+    <div style="display: grid; grid-template-columns: 1fr 400px; gap: 32px;">
+        <!-- Left Column: Patient Details & Staff Notes -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="card" style="flex-grow: 1;">
+                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 20px;">Patient Details (Editable)</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                    <div>
+                        <label for="patient_name"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Full
+                            Name</label>
+                        <input type="text" id="patient_name" name="patient_name" form="send-to-doctor-form"
+                            value="{{ patient.name }}" required
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none;">
+                    </div>
+                    <div>
+                        <label for="patient_phone"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Mobile
+                            Number</label>
+                        <input type="tel" id="patient_phone" name="patient_phone" form="send-to-doctor-form"
+                            value="{{ patient.phone }}" required
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none;">
+                    </div>
+                    <div>
+                        <label for="patient_age"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Age</label>
+                        <input type="number" id="patient_age" name="patient_age" form="send-to-doctor-form"
+                            value="{{ patient.age }}" required min="1" max="120"
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none;">
+                    </div>
+                    <div>
+                        <label for="patient_gender"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Gender</label>
+                        <select id="patient_gender" name="patient_gender" form="send-to-doctor-form" required
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none; background-color: white;">
+                            <option value="Male" {% if patient.gender=='Male' %}selected{% endif %}>Male</option>
+                            <option value="Female" {% if patient.gender=='Female' %}selected{% endif %}>Female</option>
+                            <option value="Other" {% if patient.gender=='Other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="patient_height"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Height
+                            (cm)</label>
+                        <input type="number" step="0.1" id="patient_height" name="patient_height"
+                            form="send-to-doctor-form" value="{{ patient.height }}" required min="50" max="300"
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none;">
+                    </div>
+                    <div>
+                        <label for="patient_weight"
+                            style="display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #475569;">Weight
+                            (kg)</label>
+                        <input type="number" step="0.1" id="patient_weight" name="patient_weight"
+                            form="send-to-doctor-form" value="{{ patient.weight }}" required min="10" max="500"
+                            style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size:14px; outline: none;">
+                    </div>
+                </div>
+
+                <h3
+                    style="font-size: 1rem; font-weight: 600; margin-bottom: 20px; border-top: 1px solid var(--border); padding-top: 24px;">
+                    Staff Notes</h3>
+                <textarea form="send-to-doctor-form" name="notes" rows="4"
+                    placeholder="Add clinical observations or notes..."
+                    style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); resize: vertical;">{{ notes or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Right Column: AI Result & Actions -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="card" style="border-left: 6px solid var(--primary);">
+                <h3
+                    style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                    AI Result</h3>
+                <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 1.75rem; font-weight: 800; color: var(--text);">{{ results.prediction
+                        }}</span>
+                </div>
+                <div style="font-size: 1rem; color: #10b981; font-weight: 700; margin-bottom: 8px;">
+                    <i class="fas fa-check-circle"></i> {{ results.confidence | float | round(1) }}% AI Confidence
+                </div>
+                {% if bmi %}
+                <div
+                    style="font-size: 0.9rem; color: #475569; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 600; color: #1e293b;">Patient BMI</span>
+                        <span
+                            class="badge badge-{% if bmi_cat == 'Normal' %}success{% elif bmi_cat == 'Underweight' %}pending{% else %}danger{% endif %}"
+                            style="font-size: 0.75rem; padding: 4px 10px;">
+                            {{ bmi_cat }} ({{ bmi }})
+                        </span>
+                    </div>
+
+                    <div class="bmi-scale-container" style="margin: 10px 0;">
+                        <div class="bmi-bar">
+                            {% set bmi_percent = ((bmi / 45) * 100) %}
+                            {% if bmi_percent > 100 %}{% set bmi_percent = 100 %}{% endif %}
+                            {% if bmi_percent < 0 %}{% set bmi_percent=0 %}{% endif %} <div class="bmi-marker"
+                                style="left: {{ bmi_percent }}%;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="font-size: 0.8rem; color: #64748b; font-style: italic;">
+                    Target healthy weight range for height: <strong>{{ healthy_weight }}</strong>
+                </div>
+            </div>
+            {% else %}
+            <div
+                style="font-size: 0.85rem; color: #94a3b8; border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 12px; font-style: italic;">
+                <i class="fas fa-info-circle"></i> BMI analysis unavailable. Height and weight data missing.
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 20px;">Actions</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <form id="send-to-doctor-form" action="{{ url_for('send_to_doctor', report_id=report_id) }}"
+                    method="POST">
+                    <button type="submit" class="btn btn-primary"
+                        style="width: 100%; justify-content: center; padding: 14px;">
+                        <i class="fas fa-paper-plane"></i> Send to Doctor
+                    </button>
+                </form>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline"
+                    style="width: 100%; justify-content: center; padding: 14px;">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

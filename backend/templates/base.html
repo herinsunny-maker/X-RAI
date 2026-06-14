@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}X-rai{% endblock %}</title>
+    <!-- Font Awesome — served locally from static/fontawesome/ -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
+    <style>
+        /* =============================================
+           CSS VARIABLES (Design Tokens)
+           Centralised colour/spacing values used across
+           all components so one edit changes the whole UI.
+        ============================================= */
+        :root {
+            --primary: #18978f;
+            /* Teal — brand accent          */
+            --primary-light: #f0fbfa;
+            /* Pale teal — hover/active bg  */
+            --sidebar-bg: #ffffff;
+            /* Sidebar background           */
+            --page-bg: #f4f4f8;
+            /* Page background              */
+            --text: #2d2d2d;
+            /* Body text                    */
+            --muted: #64748b;
+            /* Secondary/label text         */
+            --border: #e6e6ea;
+            /* Dividers and outlines        */
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, .10),
+                0 2px 4px -1px rgba(0, 0, 0, .06);
+        }
+
+        /* =============================================
+           RESET & BASE
+        ============================================= */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                Helvetica, Arial, sans-serif;
+            background: var(--page-bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* =============================================
+           SIDEBAR
+           Fixed 210px panel on the left.
+        ============================================= */
+        .sidebar {
+            width: 210px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header .logo {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .sidebar-menu {
+            padding: 24px 0;
+            flex-grow: 1;
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Single navigation link */
+        .menu-item {
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: .95rem;
+            transition: all .2s;
+            border-left: 4px solid transparent;
+        }
+
+        .menu-item:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .menu-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        /* =============================================
+           MAIN LAYOUT
+        ============================================= */
+        .main-container {
+            margin-left: 210px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-container.full-width {
+            margin-left: 0 !important;
+        }
+
+        /* Sticky top bar */
+        .top-header {
+            height: 70px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #475569;
+        }
+
+        /* Scrollable page content */
+        .content {
+            padding: 32px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* =============================================
+           REUSABLE COMPONENTS
+        ============================================= */
+
+        /* Card — white box with shadow */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        /* Button base */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity .2s;
+            text-decoration: none;
+            font-size: .9rem;
+        }
+
+        /* Filled primary button */
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            opacity: .9;
+        }
+
+        /* Outlined secondary button */
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            background: #f8fafc;
+        }
+
+        /* Danger (red) outline — used for delete actions */
+        .btn-danger {
+            background: transparent;
+            border: 1px solid #fca5a5;
+            color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #fff5f5;
+        }
+
+        /* Status badges (pill-shaped labels) */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Form inputs — consistent styling across all pages */
+        input[type="text"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: .9rem;
+            background: #fff;
+            color: var(--text);
+            transition: border-color .2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Flash message alerts */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: .9rem;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .alert-note {
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        /* Toggle switch (used on CNN guardrail) */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #cbd5e1;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            transition: .4s;
+        }
+
+        input:checked+.slider {
+            background: var(--primary);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .slider.round {
+            border-radius: 24px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        /* Spinner animation (used on Quick Check loading state) */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive: hide sidebar on small screens */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-container {
+                margin-left: 0;
+            }
+        }
+
+        /* BMI Scale Component */
+        .bmi-scale-container {
+            margin: 20px 0;
+            width: 100%;
+        }
+
+        .bmi-bar {
+            height: 10px;
+            width: 100%;
+            background: linear-gradient(to right,
+                    #60a5fa 0%,
+                    #60a5fa 40%,
+                    /* Underweight (<18.5) - approx 40% of scale 0-45 */
+                    #34d399 40%,
+                    #34d399 55%,
+                    /* Normal (18.5-25) */
+                    #fbbf24 55%,
+                    #fbbf24 67%,
+                    /* Overweight (25-30) */
+                    #f87171 67%,
+                    #f87171 100%
+                    /* Obese (>30) */
+                );
+            border-radius: 10px;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .bmi-marker {
+            position: absolute;
+            top: -6px;
+            width: 4px;
+            height: 22px;
+            background: #1e293b;
+            border-radius: 4px;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+            transform: translateX(-50%);
+            z-index: 2;
+            transition: left 0.5s ease-out;
+        }
+
+        .bmi-marker::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid #1e293b;
+        }
+
+        .bmi-scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .bmi-range-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .bmi-range-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .bmi-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    {% if session.get('role') and not hide_sidebar %}
+    <!-- =============================================
+         SIDEBAR NAVIGATION
+         Only shown when a user is logged in.
+         Menu items: Dashboard, New Patient, Quick AI Check.
+    ============================================= -->
+    <div class="sidebar">
+        <div class="sidebar-header" style="justify-content:center; padding: 32px 24px;">
+            <h1 style="color:#64748b;font-weight:800;font-size:1.8rem;">X-r<span style="color:#1bb8b0">ai</span></h1>
+        </div>
+
+        <nav class="sidebar-menu">
+            {% if session.get('role') == 'staff' %}
+            <a href="{{ url_for('dashboard') }}"
+                class="menu-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <a href="{{ url_for('new_patient') }}"
+                class="menu-item {% if request.endpoint == 'new_patient' %}active{% endif %}">
+                <i class="fas fa-user-plus"></i> New Patient
+            </a>
+            <a href="{{ url_for('quick_check') }}"
+                class="menu-item {% if request.endpoint == 'quick_check' %}active{% endif %}">
+                <i class="fas fa-microscope"></i> Quick AI Check
+            </a>
+            {% elif session.get('role') == 'doctor' %}
+            <a href="{{ url_for('pending_cases') }}"
+                class="menu-item {% if request.endpoint == 'pending_cases' %}active{% endif %}">
+                <i class="fas fa-inbox"></i> Pending Reviews
+            </a>
+            {% elif session.get('role') == 'patient' %}
+            <a href="{{ url_for('patient_dashboard') }}"
+                class="menu-item {% if request.endpoint == 'patient_dashboard' %}active{% endif %}">
+                <i class="fas fa-file-medical-alt"></i> My Reports
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="menu-item">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- =============================================
+         MAIN CONTENT AREA
+    ============================================= -->
+    <div class="main-container {% if not session.get('role') or hide_sidebar %}full-width{% endif %}">
+
+        {% if session.get('role') and not hide_sidebar %}
+        <!-- Top header bar with page title + user info -->
+        <div class="top-header">
+            <h2 style="font-size:1.25rem;font-weight:600">{% block page_title %}{% endblock %}</h2>
+            <div class="user-info">
+                <div style="text-align:right">
+                    <div style="font-weight:600;font-size:.9rem">{{ session.get('name') }}</div>
+                    <div style="font-size:.75rem;color:var(--muted);text-transform:capitalize">
+                        {{ session.get('role') }}
+                    </div>
+                </div>
+                <div class="user-avatar">
+                    {{ session.get('name')[0]|upper if session.get('name') else 'U' }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="content">
+            <!-- Flash messages (success / error notifications) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

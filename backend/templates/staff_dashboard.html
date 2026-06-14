@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}{% if session.get('role') == 'doctor' %}Pending Reviews{% else %}Staff Dashboard{% endif %} - KneeGuard
+AI{% endblock %}
+{% block page_title %}{% if session.get('role') == 'doctor' %}Pending Reviews{% else %}Staff Dashboard{% endif %}{%
+endblock %}
+
+{% block extra_css %}
+<style>
+    .row-alt {
+        background-color: #f8fafc;
+    }
+
+    .grade-match {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .grade-mismatch {
+        color: #ef4444;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Stats Row -->
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    {% if session.get('role') == 'staff' %}
+    <div class="card" style="margin-bottom: 0;">
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 8px;">Total Patients</div>
+        <div style="font-size: 1.75rem; font-weight: 700;">{{ stats.total_patients }}</div>
+    </div>
+    {% endif %}
+    <div class="card" style="margin-bottom: 0;">
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 8px;">Pending Review</div>
+        <div style="font-size: 1.75rem; font-weight: 700; color: #f59e0b;">{{ stats.pending_review }}</div>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 8px;">Approved Cases</div>
+        <div style="font-size: 1.75rem; font-weight: 700; color: #10b981;">{{ stats.approved_cases }}</div>
+    </div>
+</div>
+
+<!-- Main Table Card -->
+<div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">Recent Cases</h3>
+        <div style="display: flex; gap: 16px; align-items: center;">
+            <div style="position: relative;">
+                <i class="fas fa-search"
+                    style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+                <input type="text" id="patientSearch" placeholder="Search patient name..."
+                    style="padding: 10px 12px 10px 36px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 250px; outline: none; transition: border-color 0.2s;"
+                    onkeyup="filterTable()">
+            </div>
+            {% if session.get('role') == 'staff' %}
+            <a href="{{ url_for('new_patient') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Patient
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border); color: #64748b; font-size: 0.85rem;">
+                    <th style="padding: 12px 16px;">Case ID</th>
+                    <th style="padding: 12px 16px;">Patient Name</th>
+                    <th style="padding: 12px 16px;">BMI</th>
+                    <th style="padding: 12px 16px;">AI Grade</th>
+                    <th style="padding: 12px 16px;">Doctor Decision</th>
+                    <th style="padding: 12px 16px;">AI Confidence</th>
+                    <th style="padding: 12px 16px;">Status</th>
+                    <th style="padding: 12px 16px;">Case Details</th>
+                    <th style="padding: 12px 16px; text-align: center;">Report</th>
+                    <th style="padding: 12px 16px; text-align: center;">Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr style="border-bottom: 1px solid var(--border); font-size: 0.9rem;"
+                    class="{{ loop.cycle('', 'row-alt') }}">
+                    <td style="padding: 16px;">#{{ report.id }}</td>
+                    <td style="padding: 16px; font-weight: 600;">
+                        {{ report.patient_name }}
+                    </td>
+                    <td style="padding: 16px;">
+                        {% if report.bmi %}
+                        <span
+                            class="badge badge-{% if report.bmi_cat == 'Normal' %}success{% elif report.bmi_cat == 'Underweight' %}pending{% else %}danger{% endif %}"
+                            style="font-size: 0.75rem; padding: 4px 8px;">
+                            {{ report.bmi }} ({{ report.bmi_cat }})
+                        </span>
+                        {% else %}
+                        <span style="color: #94a3b8; font-size: 0.8rem;">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px;">
+                        {% if report.ai_grade is not none %}
+                        Grade {{ report.ai_grade }}
+                        {% else %}
+                        <span style="color: #94a3b8;">Processing...</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px;">
+                        {% if report.final_grade is not none %}
+                        <span
+                            class="{% if report.final_grade != report.ai_grade %}grade-mismatch{% else %}grade-match{% endif %}">
+                            Grade {{ report.final_grade }}
+                        </span>
+                        {% else %}
+                        <span style="color: #94a3b8;">Pending...</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px;">
+                        {% if report.ai_confidence %}
+                        {{ report.ai_confidence | float | round(1) }}%
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px;">
+                        <span
+                            class="badge badge-{% if report.status == 'pending' %}pending{% else %}success{% endif %}">
+                            {{ report.status }}
+                        </span>
+                    </td>
+                    <td style="padding: 16px;">
+                        <div style="display: flex; gap: 8px;">
+                            {% if session.get('role') == 'staff' %}
+                            <a href="{{ url_for('case_preview', report_id=report.id) }}" class="btn btn-outline"
+                                style="padding: 6px 12px; font-size: 0.8rem;">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            {% else %}
+                            {% if report.status == 'reviewed' %}
+                            <a href="{{ url_for('review_case', report_id=report.id) }}" class="btn btn-primary"
+                                style="padding: 6px 12px; font-size: 0.8rem; background-color: var(--primary); border-color: var(--primary);">
+                                <i class="fas fa-edit"></i> Edit Review
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('review_case', report_id=report.id) }}" class="btn btn-outline"
+                                style="padding: 6px 12px; font-size: 0.8rem;">
+                                Review Case
+                            </a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="padding: 16px; text-align: center;">
+                        {% if report.status == 'reviewed' %}
+                        <a href="{{ url_for('view_report', report_id=report.id) }}" class="btn btn-primary"
+                            style="padding: 6px 12px; font-size: 0.8rem; background-color: var(--primary); border-color: var(--primary);"
+                            title="View Final Report">
+                            <i class="fas fa-file-medical-alt"></i>
+                        </a>
+                        {% else %}
+                        <span style="color: #cbd5e1;"><i class="fas fa-file-medical-alt"></i></span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px; text-align: center;">
+                        {% if session.get('role') == 'staff' %}
+                        <form action="{{ url_for('delete_patient', patient_id=report.patient_id) }}" method="POST"
+                            onsubmit="return confirm('WARNING: Are you sure you want to delete this patient? This will permanently remove all medical images and reports.')"
+                            style="display: inline;">
+                            <button type="submit" class="btn btn-outline"
+                                style="padding: 6px 12px; font-size: 0.8rem; color: #ef4444; border-color: #fca5a5;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not reports %}
+                <tr>
+                    <td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                        No cases found. Start by adding a new patient.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function filterTable() {
+        const input = document.getElementById("patientSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector("table");
+        const tr = table.getElementsByTagName("tr");
+
+        // Loop through all table rows, starting from index 1 (skip header)
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName("td")[1]; // Patient Name column
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

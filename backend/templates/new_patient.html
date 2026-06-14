@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}New Patient — X-rai{% endblock %}
+{% block page_title %}Register New Patient{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px;margin:0 auto">
+
+    <form action="{{ url_for('new_patient') }}" method="POST" enctype="multipart/form-data">
+
+        <!-- ──────────────────────────────────────
+             SECTION 1: PATIENT INFORMATION
+        ─────────────────────────────────────── -->
+        <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;color:var(--primary)">
+            <i class="fas fa-id-card"></i> Patient Information
+        </h3>
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px">
+
+            <div>
+                <label for="name" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Full Name
+                </label>
+                <input type="text" id="name" name="name" placeholder="name" required>
+            </div>
+
+            <div>
+                <label for="age" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Age
+                </label>
+                <input type="number" id="age" name="age" placeholder="age" min="1" max="120" required>
+            </div>
+
+            <div>
+                <label for="gender" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Gender
+                </label>
+                <select id="gender" name="gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="phone" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Phone Number
+                </label>
+                <input type="tel" id="phone" name="phone" placeholder="phone number">
+            </div>
+
+            <div>
+                <label for="height" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Height (cm)
+                </label>
+                <input type="number" id="height" name="height" placeholder="e.g. 175" step="0.1" min="50" max="250">
+            </div>
+
+            <div>
+                <label for="weight" style="display:block;margin-bottom:6px;font-size:.85rem;font-weight:600">
+                    Weight (kg)
+                </label>
+                <input type="number" id="weight" name="weight" placeholder="e.g. 70" step="0.1" min="10" max="300">
+            </div>
+        </div>
+
+        <!-- ──────────────────────────────────────
+             SECTION 2: X-RAY UPLOAD
+        ─────────────────────────────────────── -->
+        <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;color:var(--primary)">
+            <i class="fas fa-file-image"></i> X-ray Upload
+        </h3>
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
+        <!-- CNN binary-validator toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:14px 16px;background:#f1f5f9;border-radius:12px;margin-bottom:20px">
+            <div>
+                <h4 style="font-size:.9rem;font-weight:600;color:#334155">Verify Uploaded Image</h4>
+                <p style="font-size:.78rem;color:var(--muted)">Turn on to verify if the uploaded image is a valid knee
+                    X-ray before analysis.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="cnn_enabled" id="cnn-toggle-ui">
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <!-- Drag-and-drop upload zone -->
+        <div id="drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:36px;
+                    text-align:center;cursor:pointer;transition:border-color .2s;
+                    margin-bottom:16px">
+            <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:#94a3b8;margin-bottom:12px"></i>
+            <p style="color:var(--muted);font-weight:500;margin-bottom:6px">
+                Drag &amp; drop X-ray image here or click to browse
+            </p>
+            <p style="color:#94a3b8;font-size:.8rem">Supports JPG, PNG (max 10 MB)</p>
+            <!-- Hidden real input — opened when user clicks the drop zone -->
+            <input type="file" id="file" name="file" accept="image/*" style="display:none" required>
+        </div>
+
+        <!-- ── IMAGE PREVIEW (visible once file is selected) ──── -->
+        <div id="preview-wrap" style="display:none;margin-bottom:16px;
+             border:1px solid var(--border);border-radius:12px;overflow:hidden;
+             background:#000;position:relative">
+            <!-- Thumbnail shown before the form is submitted -->
+            <img id="preview-img" src="" style="width:100%;max-height:320px;object-fit:contain;display:block"
+                alt="X-ray preview">
+            <div style="position:absolute;bottom:0;left:0;right:0;
+                        background:rgba(0,0,0,.55);padding:8px 14px;
+                        display:flex;align-items:center;justify-content:space-between">
+                <span style="color:#fff;font-size:.8rem;font-weight:600" id="preview-filename"></span>
+                <!-- Allows staff to clear the selected file and pick another -->
+                <button type="button" id="remove-img-btn" style="background:rgba(239,68,68,.85);border:none;color:#fff;
+                               padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.8rem">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        </div>
+
+        <!-- ──────────────────────────────────────
+             SECTION 3: STAFF NOTES
+        ─────────────────────────────────────── -->
+        <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;color:var(--primary)">
+            <i class="fas fa-notes-medical"></i> Staff Notes
+        </h3>
+        <div style="height:1px;background:var(--border);margin-bottom:16px"></div>
+        <textarea id="notes" name="notes" rows="3" placeholder="Add clinical observations or notes…"
+            style="resize:vertical;margin-bottom:28px"></textarea>
+
+        <!-- Action buttons -->
+        <div style="display:flex;justify-content:flex-end;gap:16px">
+            <button type="reset" class="btn btn-outline" onclick="clearPreview()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="padding:12px 32px">
+                <i class="fas fa-robot"></i> Run AI &amp; Save
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+    /* =================================================================
+       new_patient.html — Client-side JavaScript
+       Handles drag-and-drop uploads and image preview for the
+       new patient registration form.
+    ================================================================= */
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file');
+    const previewWrap = document.getElementById('preview-wrap');
+    const previewImg = document.getElementById('preview-img');
+
+    /* -----------------------------------------------------------------
+       showPreview(file)
+       Reads the chosen File with FileReader and renders a local
+       thumbnail inside #preview-wrap so staff can verify the correct
+       image before submitting.
+    ----------------------------------------------------------------- */
+    function showPreview(file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewImg.src = e.target.result;
+            document.getElementById('preview-filename').textContent = file.name;
+            previewWrap.style.display = 'block';
+            // Highlight the drop zone border to confirm selection
+            dropZone.style.borderColor = 'var(--primary)';
+        };
+        reader.readAsDataURL(file); // encode image as base64 data URL for display
+    }
+
+    /* -----------------------------------------------------------------
+       clearPreview()
+       Resets the file input and hides the preview.
+       Called by the Remove button or the Cancel/Reset button.
+    ----------------------------------------------------------------- */
+    function clearPreview() {
+        fileInput.value = '';
+        previewImg.src = '';
+        previewWrap.style.display = 'none';
+        dropZone.style.borderColor = 'var(--border)';
+    }
+
+    // Open system file dialog when user clicks anywhere on the drop zone
+    dropZone.onclick = () => fileInput.click();
+
+    // Update preview when file is selected from dialog
+    fileInput.onchange = () => {
+        if (fileInput.files.length) showPreview(fileInput.files[0]);
+    };
+
+    // Remove button in preview bar clears the selection
+    document.getElementById('remove-img-btn').onclick = clearPreview;
+
+    // Highlight the drop zone border while dragging a file over it
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; };
+    dropZone.ondragleave = () => dropZone.style.borderColor = 'var(--border)';
+
+    // Handle file drop — set the file input's files and show preview
+    dropZone.ondrop = e => {
+        e.preventDefault();
+        fileInput.files = e.dataTransfer.files; // assign dropped files to input
+        if (fileInput.files.length) showPreview(fileInput.files[0]);
+    };
+</script>
+{% endblock %}
