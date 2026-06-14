@@ -6,16 +6,16 @@ import tensorflow as tf
 from tensorflow.keras import models
 from ml_pipeline.utils import apply_clahe
 
-# Configuration
-IMG_SIZE = (224, 224)  # Last Stand v1 champion — trained @ 224x224
+
+IMG_SIZE = (224, 224)  
 BINARY_IMG_SIZE = (224, 224)
 from backend.path_utils import get_ml_model_path, get_upload_path
 
-# Configuration
+
 IMG_SIZE = (224, 224)
 BINARY_IMG_SIZE = (224, 224)
 
-# Models using centralized path utility
+
 MODEL_PATH = os.path.join(get_ml_model_path(), "knee_oa_efficientnet_last_stand.h5")
 BINARY_MODEL_PATH = os.path.join(get_ml_model_path(), "binary_xray_validator.h5")
 
@@ -29,10 +29,10 @@ class ModelHandler:
             self.load_models()
 
     def load_models(self):
-        # Load OA Model (v1 Last Stand — EfficientNetV2S @ 224x224)
+       
         if os.path.exists(MODEL_PATH):
             try:
-                # compile=False: skip optimizer rebuild (training layers like RandomFlip are fine)
+                
                 self.oa_model = tf.keras.models.load_model(MODEL_PATH, compile=False)
                 print(f"OA Model (v1) loaded OK — {sum(l.count_params() for l in self.oa_model.layers):,} params")
             except Exception as e:
@@ -50,7 +50,7 @@ class ModelHandler:
 
         print(f"OA model status: {'LOADED' if self.oa_model is not None else 'FAILED/NONE'}")
 
-        # Load Binary Model
+       
         if os.path.exists(BINARY_MODEL_PATH):
             try:
                 self.binary_model = tf.keras.models.load_model(BINARY_MODEL_PATH, compile=False)
@@ -106,14 +106,14 @@ class ModelHandler:
         return tf.keras.Model(inputs, outputs)
 
     def preprocess_image(self, image_path):
-        # Load image
+       
         img_bgr = cv2.imread(image_path)
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         
-        # Apply CLAHE (Contrast Enhancement) to match new training pipeline
+        
         img_clahe = apply_clahe(img_rgb)
         
-        # Resize for model
+        
         img_resized = cv2.resize(img_clahe, IMG_SIZE)
         img_array = np.expand_dims(img_resized, axis=0).astype(np.float32)
         
@@ -125,9 +125,7 @@ class ModelHandler:
         Uses logits to prevent vanishing gradients on confident predictions.
         """
         try:
-            # 1. Identify key layers from the main model
-            # Note: Layer names might have indices (e.g. 'dense_1') if reloaded multiple times
-            # We look for layers by their class/name patterns for stability
+            
             rescaling = None
             backbone = None
             gap = None
@@ -145,51 +143,49 @@ class ModelHandler:
             if not all([backbone, gap, bn, dense]):
                 raise ValueError("Could not identify all model components for Grad-CAM")
 
-            # 2. Setup Grad-CAM: Target the internal top_activation of the backbone
-            # We create a sub-model of the backbone to get the feature maps
+            
             last_conv_layer_name = "top_activation"
             backbone_features_model = tf.keras.models.Model(
                 backbone.inputs, backbone.get_layer(last_conv_layer_name).output
             )
 
             with tf.GradientTape() as tape:
-                # Flow through the model manually
+               
                 x = rescaling(img_array) if rescaling else img_array
                 conv_output = backbone_features_model(x)
                 tape.watch(conv_output)
                 
-                # Head logic (v1 Champion architecture)
+               
                 x = gap(conv_output)
                 x = bn(x)
-                # Dropout is usually training-only, okay to skip
-                preds = dense(x) # Sigmoids (1, 4)
+               
+                preds = dense(x) 
 
-                # Get predicted grade
+              
                 pred_np = preds.numpy()[0]
                 grade_idx = int((pred_np > 0.5).sum())
                 sig_idx = min(max(grade_idx - 1, 0), 3)
                 
-                # Signal Strength: Use Logits to avoid vanishing gradients
-                # Logit(p) = log(p / (1-p))
+                
                 target_p = preds[:, sig_idx]
                 logit = tf.math.log(target_p / (1.0 - target_p + 1e-7))
 
-            # 3. Compute gradients of logit with respect to feature maps
+            
             grads = tape.gradient(logit, conv_output)
             
-            # Simple fallback if logit gradient vanishes (unlikely)
+            
             if grads is None:
                 raise ValueError("Gradients could not be computed")
 
-            # 4. Importance weights (Global Average Pooling of gradients)
+            
             weights = tf.reduce_mean(grads, axis=(0, 1, 2))
 
-            # 5. Weighted Feature Maps
+            
             feature_maps = conv_output[0]
             heatmap = feature_maps @ weights[..., tf.newaxis]
             heatmap = tf.squeeze(heatmap).numpy()
 
-            # 6. Apply ReLU and Normalization
+            
             heatmap = np.maximum(heatmap, 0)
             mx = np.max(heatmap)
             if mx > 1e-8:
@@ -212,11 +208,11 @@ class ModelHandler:
         heatmap_uint8 = np.uint8(255 * heatmap_resized)
         heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
 
-        # Blend: heatmap 40% + original 60%
+        
         orig_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
         superimposed = np.clip(heatmap_colored * 0.45 + orig_bgr * 0.55, 0, 255).astype(np.uint8)
 
-        # Use centralized upload directory
+        
         upload_dir = get_upload_path()
         os.makedirs(upload_dir, exist_ok=True)
 
@@ -240,7 +236,7 @@ class ModelHandler:
                 "details": "MOCK MODE: Results are simulated."
             }
 
-        # 1. Binary validation
+      
         if self.binary_model and not skip_validation:
             img_bgr = cv2.imread(image_path)
             img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
@@ -249,14 +245,14 @@ class ModelHandler:
             
             xray_prob = self.binary_model.predict(img_array_bin, verbose=0)[0][0]
             if xray_prob < 0.5:
-                # Not an X-ray
+                
                 return {
                     "is_xray": False,
                     "confidence": f"{(1-xray_prob)*100:.1f}%",
                     "details": "The image does not appear to be a knee X-ray. Please upload a valid medical image."
                 }
 
-        # 2. Main OA Prediction
+       
         if self.oa_model is None:
             return {"is_xray": True, "error": "OA model not loaded.",
                     "prediction": "Unavailable", "confidence": "N/A",
@@ -265,16 +261,15 @@ class ModelHandler:
         original_img, img_array = self.preprocess_image(image_path)
         heatmap, preds = self.make_gradcam_heatmap(img_array)
 
-        # Only generate overlay if Grad-CAM succeeded
+       
         heatmap_url, overlay_url = None, None
         if heatmap is not None:
             heatmap_url, overlay_url = self.save_and_overlay(heatmap, original_img, filename)
         
-        # Decode Ordinal Regression (Cumulative Sigmoids)
-        # preds is [p>=1, p>=2, p>=3, p>=4]
+        
         grade_idx = int(np.sum(preds > 0.5))
         
-        # Confidence as a number (0-100) — stored in DB as numeric, displayed formatted
+       
         if grade_idx == 0:
             conf_val = float(1.0 - preds[0])
         elif grade_idx == 4:
@@ -285,7 +280,7 @@ class ModelHandler:
         classes = ["Normal (Grade 0)","Doubtful (Grade 1)","Mild (Grade 2)","Moderate (Grade 3)","Severe (Grade 4)"]
 
 
-        # All predictions for display
+        
         all_preds_dict = {}
         all_preds_dict["Grade 0"] = float(1.0 - preds[0])
         all_preds_dict["Grade 1"] = float(preds[0] - preds[1]) if len(preds) > 1 else 0.0
@@ -297,8 +292,8 @@ class ModelHandler:
             "is_xray": True,
             "xray_path": f"static/uploads/{filename}",
             "prediction": classes[grade_idx],
-            "confidence": conf_val,           # numeric float, e.g. 75.3
-            "confidence_str": f"{conf_val:.1f}%",  # formatted string for display
+            "confidence": conf_val,           
+            "confidence_str": f"{conf_val:.1f}%",  
             "details": f"KL-Grade {grade_idx} — knee_oa_efficient net v1 (EfficientNetV2S, 66% acc, QWK 0.82)",
             "grade": grade_idx,
             "heatmap_path": heatmap_url,
